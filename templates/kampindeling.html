@@ -1,0 +1,57 @@
+{% extends 'layout.html' %}
+
+{% block head %}
+<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<link rel="stylesheet" href="/resources/demos/style.css">
+<style>
+	.sortable {
+		width: 200px;
+		border: 3px solid red;
+		margin: 4px;
+		margin-left: 20px;
+		padding: 5px;
+	}
+
+	.deelnemer {
+		border: solid skyblue 1px;
+	}
+
+	th {
+		font-weight: normal;
+	}
+
+</style>
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script>
+$( function() {
+	$(".sortable").sortable({ items: ".deelnemer", connectWith: ".sortable" });
+	$(".sortable").disableSelection();
+});
+
+</script>
+{% endblock %}
+
+{% block title %}
+Index
+{% endblock %}
+	
+{% block body %}
+
+	<table>
+{% for kamp in ["Dushihuis", "AZC", "Voedselbank"] %}
+	<th>
+		{{ kamp }}
+		<div class="sortable"><h1>Co</h1></div>
+		<div class="sortable"><h1>Kokers</h1></div>
+		<div class="sortable"><h1>Zeilers</h1></div>
+		<div class="sortable"><h1>Reserve</h1>
+			{% for i in ["Dries", "Dymph", "Fenna", "Mael", "Hielke", "Niels", "Casper", "Reinder", "Jan-Willem", "Ceciel", "Johan"] %}
+				<div class="deelnemer" title="al 5 kampen">{{ i }}</div>
+			{% endfor %}
+		</div>
+	</th>
+{% endfor %}
+</table>
+
+{% endblock %}
