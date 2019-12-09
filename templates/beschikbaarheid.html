@@ -1,29 +1,37 @@
 {% extends 'layout.html' %}
 {% import "bootstrap/wtf.html" as wtf %}
 
-{% block head %}
-<link type="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/css/bootstrap-datetimepicker.min.css">
-{% endblock %}
-
 {% block title %}
-Index
-{% endblock %}
-	
-{% block body %}
-  <div class="container">
-    <h1>Hello, Bootstrap</h1>
-    <div class="row">
-      <div class='col-sm-6'>
-        {{ wtf.quick_form(form) }}
-      </div>
-    </div>
-  </div>
+Beschikbaarheid doorgeven
 {% endblock %}
 
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.18.1/moment.min.js"></script>
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.47/js/bootstrap-datetimepicker.min.js"></script>
-<script type="text/javascript">
-	$(function () {
-	 	$('#datepick').datetimepicker();
-	});
+{% block body %}
+<style type="text/css">
+  span {
+    background-color: white;
+  }
+</style>
+<script src="//code.jquery.com/jquery-1.11.2.min.js"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/daterangepicker.min.css') }}">
+<script src="{{ url_for('static', filename='js/jquery.daterangepicker.js') }}"></script>
+<script>
+  $(function(){
+    $("#date").dateRangePicker({
+  getValue: function()
+  {
+    return this.innerHTML;
+  },
+  setValue: function(s)
+  {
+    this.innerHTML = s;
+  }
+});
+  });
 </script>
+
+<form action="/beschikbaarheid" method="POST" name="beschikbaarheid">
+  <span id="date" name="brutus">Beschikbaarheid selecteren</span>
+
+  <button type="submit">Beschikbaarheid doorgeven</button>
+</form>
+{% endblock %}

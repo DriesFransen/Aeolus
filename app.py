@@ -11,11 +11,14 @@ from sqlalchemy import create_engine, func
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm, Form
 from flask_mail import Mail, Message
-from wtforms import StringField, PasswordField, RadioField, BooleanField, SubmitField, SelectMultipleField, DateField
+from wtforms import StringField, PasswordField, RadioField, BooleanField, SubmitField, SelectMultipleField, DateField, IntegerField
 from wtforms.validators import Length, InputRequired, Email
 from wtforms.widgets import TextArea
 from uuid import uuid4
 from werkzeug.security import generate_password_hash, check_password_hash
+from copy import deepcopy
+import datetime as dt
+import json
 
 app = Flask(__name__)
 os.environ["DATABASE_URL"] = "postgres://yeunqgptxihplv:81c3415035b203f5ad010f95ae8120557827\
@@ -39,13 +42,13 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 
 app.config.update(dict(
-    DEBUG = True,
-    MAIL_SERVER = 'smtp.gmail.com',
-    MAIL_PORT = 587,
-    MAIL_USE_TLS = True,
-    MAIL_USE_SSL = False,
-    MAIL_USERNAME = 'driesmans4@gmail.com',
-    MAIL_PASSWORD = 'zzxx1234',
+	DEBUG = True,
+	MAIL_SERVER = 'smtp.gmail.com',
+	MAIL_PORT = 587,
+	MAIL_USE_TLS = True,
+	MAIL_USE_SSL = False,
+	MAIL_USERNAME = 'driesmans4@gmail.com',
+	MAIL_PASSWORD = 'zzxx1234',
 ))
 
 mail = Mail(app)
@@ -62,6 +65,14 @@ class RegisterForm(FlaskForm):
 		Email(message="Ok that's not your email."), Length(max=128, message=errormessage)])
 	username = StringField("username", validators=[InputRequired(), Length(min=3, max=64, message=errormessage)])
 	password = PasswordField("password", validators=[InputRequired(), Length(max=64, message=errormessage)])
+
+class AddCampForm(FlaskForm):
+	kampNaam = StringField("Kampnaam", validators=[InputRequired()])
+	startDatum = DateField("Begindatum", default=dt.date.today, validators=[InputRequired()], format='%d-%m-%Y')
+	eindDatum = DateField("Einddatum", default=dt.date.today, validators=[InputRequired()], format='%d-%m-%Y')
+	aantalDoelgroepers = IntegerField("Aantal doelgroepers", validators=[InputRequired()])
+	aantalBegeleiders = IntegerField("Aantal begeleiders", validators=[InputRequired()])
+	aantalKokers = IntegerField("Aantal kokers", validators=[InputRequired()])
 	
 class SearchForm(FlaskForm):
 	searchtype = RadioField("searchtype", choices=[('isbn', 'isbn'), ('title', 'title'), ('author', 'author')], default='isbn')
@@ -71,23 +82,63 @@ class ReviewForm(FlaskForm):
 	reviewtext = StringField("Laat hier je review achter", widget=TextArea())
 	score = RadioField("score", choices=[('1', '1'), ('2', '2'), ('3', '3'), ('4', '4'), ('5', '5')])
 
-class AvailabilityForm(Form):
-    date = DateField(id='datepick')
+class AvailabilityForm(FlaskForm):
+	name = StringField("Naam", validators=[InputRequired()])
+	date1 = BooleanField("Week 1")
+	date2 = BooleanField("Week 2")
+	date3 = BooleanField("Week 3")
+	date4 = BooleanField("Week 4")
+
+class LidAanmaakForm(FlaskForm):
+	voornaam = StringField("Voornaam", validators=[InputRequired()])
+	achternaam = StringField("Achternaam", validators=[InputRequired()])
+	geboortedatum = DateField("Geboortedatum",default=dt.date.today, format='%d-%m-%Y')
+	straatEnNummer = StringField("Straat + huisnummer", validators=[InputRequired()])
+	postcode = StringField("Postcode", validators=[InputRequired()])
+	aantalKampen = IntegerField("Aantal kampen", validators=[InputRequired()])
+	hulpTikker = BooleanField("Hulptikker")
+	co = BooleanField("Co")
+	functie = RadioField(choices=[('koker', 'koker'), ('zeiler', 'zeiler')], validators=[InputRequired()])
+	dubbelZeilen = BooleanField("Dubbelzeilen")
 
 
-class leden(db.Model, UserMixin):
+
+class leden(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
-	username = db.Column(db.String(64), unique=True)
-	email = db.Column(db.String(128), unique=True)
-	password = db.Column(db.String(128))
+	voornaam = db.Column(db.String)
+	achternaam = db.Column(db.String)
+	geboortedatum = db.Column(db.Date)
+	straatEnNummer = db.Column(db.String)
+	postcode = db.Column(db.String)
+	aantalKampen = db.Column(db.Integer)
+	hulpTikker = db.Column(db.Boolean)
+	co = db.Column(db.Boolean)
+	functie = db.Column(db.String)
+	dubbelZeilen = db.Column(db.Boolean)
+	ingedeeldBij = db.Column(db.JSON)
+
+class ledenbeschikbaarheid(db.Model):
+	datum = db.Column(db.Date, primary_key=True)
+	beschikbaarheid = db.Column(db.JSON)
 
 class kampen(db.Model):
 	id = db.Column(db.Integer, primary_key=True)
-	isbn = db.Column(db.String(10))
-	user_id = db.Column(db.Integer)
-	username = db.Column(db.String)
-	review_text = db.Column(db.String)
-	score = db.Column(db.String)
+	kampNaam = db.Column(db.String)
+	startDatum = db.Column(db.Date)
+	eindDatum = db.Column(db.Date)
+	aantalDoelgroepers = db.Column(db.Integer)
+	aantalBegeleiders = db.Column(db.Integer)
+	aantalKokers = db.Column(db.Integer)
+
+class kampbeschikbaarheid(db.Model):
+	id = db.Column(db.Integer, primary_key=True)
+	beschikbaarheid = db.Column(db.JSON)
+
+class kampindeling(db.Model):
+	id = db.Column(db.Integer, primary_key=True)
+	rollen = db.Column(db.JSON)
+
+
 
 
 @login_manager.user_loader
@@ -96,7 +147,7 @@ def load_user(user_id):
 
 @login_manager.unauthorized_handler
 def unauthorized_callback():
-    return redirect('/login')
+	return redirect('/login')
 
 @app.route("/")
 def index():
@@ -143,8 +194,8 @@ def signup():
 
 @app.route("/kampindeling", methods=['GET', 'POST'])
 # @login_required
-def kampindeling():
-	return render_template("kampindeling.html")
+def kampindeling_maken():
+	return render_template("kampindeling.html", kampen=kampen.query.all(), leden=leden.query.all())
 
 
 @app.route("/beschikbaarheid", methods=['GET', 'POST'])
@@ -152,9 +203,61 @@ def kampindeling():
 def beschikbaarheid():
 	form = AvailabilityForm()
 	if form.validate_on_submit():
-		pass
+		name, date1, date2, date3, date4 = form.name.data, form.date1.data, form.date2.data, form.date3.data, form.date4.data
+		dates = [dt.date(2020, 6, 1), dt.date(2020, 6, 8), dt.date(2020, 6, 15), dt.date(2020, 6, 22)]
+		datedict = {dt.date(2020, 6, 1).isoformat():date1, dt.date(2020, 6, 8).isoformat():date2, dt.date(2020, 6, 15).isoformat():date3, dt.date(2020, 6, 22).isoformat():date4}
+		datesjson = json.dumps(datedict)
+		render_template("kampindeling.html")
 	return render_template("beschikbaarheid.html", form=form)
 
+@app.route("/kamp_toevoegen", methods=['GET', 'POST'])
+def kamp_toevoegen():
+	form = AddCampForm()
+	if form.validate_on_submit():
+		kampNaam, startDatum, eindDatum, aantalDoelgroepers, aantalBegeleiders, aantalKokers = \
+		form.kampNaam.data, form.startDatum.data, form.eindDatum.data, form.aantalDoelgroepers.data, form.aantalBegeleiders.data, form.aantalKokers.data
+		kamp = kampen(kampNaam=kampNaam, startDatum=startDatum, eindDatum=eindDatum, aantalDoelgroepers=aantalDoelgroepers, \
+			aantalBegeleiders=aantalBegeleiders, aantalKokers=aantalKokers)
+		db.session.add(kamp)
+		db.session.commit()
+		return render_template("kampindeling.html")
+	return render_template("kamp_toevoegen.html", form=form)
+
+
+@app.route("/lid_aanmaken", methods=['GET', 'POST'])
+def lid_aanmaken():
+	form = LidAanmaakForm()
+	if form.validate_on_submit():
+		voornaam, achternaam, geboortedatum, straatEnNummer, postcode, aantalKampen, hulpTikker, co, functie, dubbelZeilen =\
+		form.voornaam.data, form.achternaam.data, form.geboortedatum.data, form.straatEnNummer.data, form.postcode.data, \
+		form.aantalKampen.data, form.hulpTikker.data, form.co.data, form.functie.data, form.dubbelZeilen.data
+		lid = leden(voornaam=voornaam,achternaam=achternaam,geboortedatum=geboortedatum,straatEnNummer=straatEnNummer,postcode=postcode,\
+			aantalKampen=aantalKampen,hulpTikker=hulpTikker,co=co,functie=functie,dubbelZeilen=dubbelZeilen,ingedeeldBij={})
+		db.session.add(lid)
+		db.session.commit()
+	return render_template("lid_aanmaken.html", form=form)
+
+@app.route('/kampindeling_submit', methods=['POST'])
+def kampindeling_submit():
+	if request.method == 'POST':
+		kamprollen = request.get_json()
+		kamp_id = kamprollen["kamp_id"]
+		print(kamprollen)
+		rollen = {}
+		for rol in list(kamprollen.keys())[1:]:
+			user_ids = kamprollen[rol]
+			for user_id in user_ids:
+				rollen[user_id] = rol
+				user = leden.query.filter_by(id=int(user_id)).first()
+				new_ingedeeldBij = deepcopy(user.ingedeeldBij)
+				new_ingedeeldBij[kamp_id] = rol
+				user.ingedeeldBij = new_ingedeeldBij
+				db.session.commit()
+		indeling = kampindeling(id=kamp_id, rollen=rollen)
+		kampindeling.query.filter_by(id=kamp_id).delete()
+		db.session.add(indeling)
+		db.session.commit()
+	return rol, 200
 
 # @app.route("/validate/<string:validation_key>")
 # def validate(validation_key):
