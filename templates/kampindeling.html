@@ -1,9 +1,15 @@
 {% extends 'layout.html' %}
 
 {% block head %}
+{% set rollen = ['co', 'koker', 'zeiler', 'reserve'] %}
+{% set coKleur = 'orange' %}
+{% set zeilerKleur = 'blue' %}
+{% set kokerKleur = 'green' %}
+
 <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
 <link rel="stylesheet" href="/resources/demos/style.css">
 <style>
+
 	.sortable {
 		width: 200px;
 		border: 3px solid red;
@@ -20,15 +26,87 @@
 		font-weight: normal;
 	}
 
+	.ui-tooltip {
+		font-size: 20px;
+    	white-space: pre-line;
+	}
+
+	.koker.co {
+		background: repeating-linear-gradient(
+		  30deg,
+		  {{ coKleur }},
+		  {{ coKleur }} 5px,
+		  {{ kokerKleur }} 5px,
+		  {{ kokerKleur }} 10px
+		);
+	}
+
+	.zeiler.co {
+		background: repeating-linear-gradient(
+		  30deg,
+		  {{ coKleur }},
+		  {{ coKleur }} 5px,
+		  {{ zeilerKleur }} 5px,
+		  {{ zeilerKleur }} 10px
+		);
+	}
+
+	.zeiler {
+		background: {{ zeilerKleur }};
+	}
+
+	.koker {
+		background: {{ kokerKleur }};
+	}
+
 </style>
 <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
 <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 <script>
 $( function() {
-	$(".sortable").sortable({ items: ".deelnemer", connectWith: ".sortable" });
-	$(".sortable").disableSelection();
+	{% for kamp in kampen %}
+		{% for rol in ['koker', 'zeiler', 'co'] %}
+			$(".{{ rol }}-{{ kamp.id }}").sortable({ items: ".{{ rol }}", connectWith: ".sortable-{{ kamp.id }}", axis: "y", 
+				stop: function(e, ui) {ui.item.children.show() },
+				receive: function (event, ui) {
+				if (!$(ui.item).hasClass("{{ rol }}")) {
+					$(ui.sender).sortable("cancel");
+				} 
+			}});
+			$(".{{ rol }}-{{ kamp.id }}").disableSelection();
+		{% endfor %}
+		$(".reserve-{{ kamp.id }}").sortable({ items: ".deelnemer", connectWith: ".sortable-{{ kamp.id }}", axis: "y"});
+		$(".reserve-{{ kamp.id }}").disableSelection();
+	{% endfor %}
+	$( document ).tooltip({ show: false, hide: false, position: { my: "left+15 center", at: "right center"} });
 });
 
+$(document).ready(function(){
+	$(".submitbutton").click(function() {
+		var id = $(this).attr('id').split('-')[1];
+		var role_list = ["co", "koker", "zeiler", "reserve"];
+		var co_names = [];
+		var koker_names = [];	
+		var zeiler_names = [];	
+		var reserve_names = [];	
+		for (var i = 0; i < role_list.length; i++) {
+			$('#'+role_list[i]+'-'+id).children().each(function() {
+				user_id = $(this).attr('id');
+				if (user_id) {
+					eval(role_list[i]+"_names").push(user_id[0]);
+				}
+			});
+		}
+		$.ajax({
+			type: "POST",
+			contentType: "application/json;charset=utf-8",
+			url: "/kampindeling_submit",
+			traditional: "true",
+			data: JSON.stringify({'kamp_id': id, 'co':co_names, 'koker':koker_names, 'zeiler':zeiler_names, 'reserve':reserve_names,}),
+			dataType: "json"
+		});
+	});
+});
 </script>
 {% endblock %}
 
@@ -38,20 +116,29 @@ Index
 	
 {% block body %}
 
-	<table>
-{% for kamp in ["Dushihuis", "AZC", "Voedselbank"] %}
-	<th>
-		{{ kamp }}
-		<div class="sortable"><h1>Co</h1></div>
-		<div class="sortable"><h1>Kokers</h1></div>
-		<div class="sortable"><h1>Zeilers</h1></div>
-		<div class="sortable"><h1>Reserve</h1>
-			{% for i in ["Dries", "Dymph", "Fenna", "Mael", "Hielke", "Niels", "Casper", "Reinder", "Jan-Willem", "Ceciel", "Johan"] %}
-				<div class="deelnemer" title="al 5 kampen">{{ i }}</div>
-			{% endfor %}
-		</div>
+<table>
+{% for kamp in kampen %}
+	<th id="{{ kamp.id }}">
+	<form method="POST">
+		{{ kamp.kampNaam }}
+		{% for rol in ['co', 'koker', 'zeiler', 'reserve'] %}
+			<div id="{{ rol }}-{{ kamp.id }}" class="sortable sortable-{{ kamp.id }} {{ rol }}-{{ kamp.id }}"><h1>{{ rol|capitalize }}</h1>
+				{% for lid in leden %}
+					{% if lid.ingedeeldBij[kamp.id|string] == rol %}
+						{% set functieStr = lid.functie + ('co' if lid.co else '') %}
+						{% set classStr = lid.functie + (' co' if lid.co else '')  %}
+						<div id="{{ lid.id }}-{{ kamp.id }}" class="deelnemer {{ classStr }}" title="{{ lid.voornaam }} {{ lid.achternaam }}
+							{{ functieStr|capitalize }}
+							{{ lid.aantalKampen }} kampen
+							{{ 'Dubbelzeilen' if lid.dubbelZeilen else '' }}">
+							{{ lid.voornaam }}
+						</div>
+					{% endif %}
+				{% endfor %}
+			</div>
+		{% endfor %}
+		<button href="#" class="submitbutton" id="submitbutton-{{ kamp.id }}">klik</button>
 	</th>
 {% endfor %}
 </table>
-
 {% endblock %}

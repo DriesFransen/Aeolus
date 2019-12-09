@@ -1,0 +1,31 @@
+{% extends 'layout.html' %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}
+Nieuw lid
+{% endblock %}
+
+{% block body %}
+<form action="lid_aanmaken" method="POST" name="lid_aanmaken">
+  <h1>Lid toevoegen</h1>
+  {{ form.hidden_tag() }}
+  {{ wtf.form_field(form.voornaam) }}
+  {{ wtf.form_field(form.achternaam) }}
+  {{ wtf.form_field(form.geboortedatum) }}
+  {{ wtf.form_field(form.straatEnNummer) }}
+  {{ wtf.form_field(form.postcode) }}
+  {{ wtf.form_field(form.aantalKampen) }}
+  {{ wtf.form_field(form.hulpTikker) }}
+  {{ wtf.form_field(form.co) }}
+  {% for subfield in form.functie %}
+  <tr>
+    <td>{{ subfield }}</td>
+    <td>{{ subfield.label }}</td>
+  </tr>
+  {% endfor %}
+  {{ wtf.form_field(form.dubbelZeilen) }}
+
+  <button type="submit">Nieuw lid toevoegen</button>
+</form>
+{% endblock %}
+

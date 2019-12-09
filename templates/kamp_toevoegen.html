@@ -1,0 +1,21 @@
+{% extends 'layout.html' %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}
+Nieuw kamp
+{% endblock %}
+
+{% block body %}
+<form action="/kamp_toevoegen" method="POST" name="kamp_toevoegen">
+  <h1>Kamp toevoegen</h1>
+  {{ form.hidden_tag() }}
+  {{ wtf.form_field(form.kampNaam) }}
+  {{ wtf.form_field(form.startDatum) }}
+  {{ wtf.form_field(form.eindDatum) }}
+  {{ wtf.form_field(form.aantalDoelgroepers) }}
+  {{ wtf.form_field(form.aantalBegeleiders) }}
+  {{ wtf.form_field(form.aantalKokers) }}
+
+  <a href="index.html"><button type="submit" >Kamp aanmaken</button></a>
+</form>
+{% endblock %}
