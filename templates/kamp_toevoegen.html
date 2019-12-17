@@ -1,21 +1,77 @@
 {% extends 'layout.html' %}
 {% import "bootstrap/wtf.html" as wtf %}
 
+{% block head %}
+<style type="text/css">
+	#minMaxDoelgroepersSlider {
+		width: 50%;
+		margin-left: 10px;
+	}
+
+	.handle {
+    width: 3em;
+    height: 1.6em;
+    top: 50%;
+    text-align: center;
+    font-size: 20px;
+    line-height: 1em;
+  }
+
+  label[for=minDoelgroepers], label[for=maxDoelgroepers] {
+  	display: none;
+  }
+
+</style>
+<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script>
+	$( function() {
+		var handle_min = $( "#custom-handle-min" );
+		var handle_max = $( "#custom-handle-max" );
+		handle_min.disableSelection();
+		handle_max.disableSelection();
+		$( "#minMaxDoelgroepersSlider" ).slider({
+			range: true,
+			min: 1,
+			max: 50,
+			values: [ $( "#minDoelgroepers" ).val(), $( "#maxDoelgroepers" ).val() ],
+			create: function() {
+				handle_min.text( $( this ).slider( "values", 0 ) );
+				handle_max.text( $( this ).slider( "values", 1 ) );
+			},
+			slide: function( event, ui ) {
+				$( "#minDoelgroepers" ).val( ui.values[ 0 ] );
+				handle_min.text(ui.values[0]);
+				$( "#maxDoelgroepers" ).val( ui.values[ 1 ] );
+				handle_max.text(ui.values[1]);
+			}
+		});
+	});
+</script>
+{% endblock %}
+
 {% block title %}
 Nieuw kamp
 {% endblock %}
 
 {% block body %}
 <form action="/kamp_toevoegen" method="POST" name="kamp_toevoegen">
-  <h1>Kamp toevoegen</h1>
-  {{ form.hidden_tag() }}
-  {{ wtf.form_field(form.kampNaam) }}
-  {{ wtf.form_field(form.startDatum) }}
-  {{ wtf.form_field(form.eindDatum) }}
-  {{ wtf.form_field(form.aantalDoelgroepers) }}
-  {{ wtf.form_field(form.aantalBegeleiders) }}
-  {{ wtf.form_field(form.aantalKokers) }}
+	<h1>Kamp toevoegen</h1>
+	{{ form.hidden_tag() }}
+	{{ wtf.form_field(form.kampNaam) }}
+	{{ wtf.form_field(form.startDatum) }}
+	{{ wtf.form_field(form.eindDatum) }}
+	{{ wtf.form_field(form.minDoelgroepers) }}
+	{{ wtf.form_field(form.maxDoelgroepers) }}
+	<label for="minMaxDoelgroepersSlider">Aantal doelgroepers</label>
+	<div id="minMaxDoelgroepersSlider">
+		<div id="custom-handle-min" class="ui-slider-handle handle"></div>
+		<div id="custom-handle-max" class="ui-slider-handle handle"></div>
+	</div>
+	{{ wtf.form_field(form.aantalBegeleiders) }}
+	{{ wtf.form_field(form.aantalKokers) }}
 
-  <a href="index.html"><button type="submit" >Kamp aanmaken</button></a>
+	<a href="index.html"><button type="submit" >Kamp aanmaken</button></a>
 </form>
 {% endblock %}

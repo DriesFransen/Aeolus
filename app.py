@@ -11,9 +11,8 @@ from sqlalchemy import create_engine, func
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm, Form
 from flask_mail import Mail, Message
-from wtforms import StringField, PasswordField, RadioField, BooleanField, SubmitField, SelectMultipleField, DateField, IntegerField
+from wtforms import Field, StringField, PasswordField, RadioField, BooleanField, SubmitField, SelectMultipleField, DateField, IntegerField, HiddenField, widgets
 from wtforms.validators import Length, InputRequired, Email
-from wtforms.widgets import TextArea
 from uuid import uuid4
 from werkzeug.security import generate_password_hash, check_password_hash
 from copy import deepcopy
@@ -55,6 +54,7 @@ mail = Mail(app)
 
 db = SQLAlchemy(app)
 
+
 class LoginForm(FlaskForm):
 	username = StringField("username", validators=[InputRequired(), Length(min=3, max=64)])
 	password = PasswordField("password", validators=[InputRequired(), Length(max=64)])
@@ -70,7 +70,8 @@ class AddCampForm(FlaskForm):
 	kampNaam = StringField("Kampnaam", validators=[InputRequired()])
 	startDatum = DateField("Begindatum", default=dt.date.today, validators=[InputRequired()], format='%d-%m-%Y')
 	eindDatum = DateField("Einddatum", default=dt.date.today, validators=[InputRequired()], format='%d-%m-%Y')
-	aantalDoelgroepers = IntegerField("Aantal doelgroepers", validators=[InputRequired()])
+	minDoelgroepers = HiddenField("Minimum aantal doelgroepers", default=10)
+	maxDoelgroepers = HiddenField("Maximum aantal doelgroepers", default=20)
 	aantalBegeleiders = IntegerField("Aantal begeleiders", validators=[InputRequired()])
 	aantalKokers = IntegerField("Aantal kokers", validators=[InputRequired()])
 	
@@ -79,7 +80,7 @@ class SearchForm(FlaskForm):
 	query = StringField("query", validators=[InputRequired()])
 
 class ReviewForm(FlaskForm):
-	reviewtext = StringField("Laat hier je review achter", widget=TextArea())
+	reviewtext = StringField("Laat hier je review achter", widget=widgets.TextArea())
 	score = RadioField("score", choices=[('1', '1'), ('2', '2'), ('3', '3'), ('4', '4'), ('5', '5')])
 
 class AvailabilityForm(FlaskForm):
@@ -116,6 +117,7 @@ class leden(db.Model):
 	functie = db.Column(db.String)
 	dubbelZeilen = db.Column(db.Boolean)
 	ingedeeldBij = db.Column(db.JSON)
+	kampenGedaan = db.Column(db.Integer, default=0)
 
 class ledenbeschikbaarheid(db.Model):
 	datum = db.Column(db.Date, primary_key=True)
@@ -126,7 +128,8 @@ class kampen(db.Model):
 	kampNaam = db.Column(db.String)
 	startDatum = db.Column(db.Date)
 	eindDatum = db.Column(db.Date)
-	aantalDoelgroepers = db.Column(db.Integer)
+	minAantalDoelgroepers = db.Column(db.Integer)
+	maxAantalDoelgroepers = db.Column(db.Integer)
 	aantalBegeleiders = db.Column(db.Integer)
 	aantalKokers = db.Column(db.Integer)
 
@@ -214,10 +217,11 @@ def beschikbaarheid():
 def kamp_toevoegen():
 	form = AddCampForm()
 	if form.validate_on_submit():
-		kampNaam, startDatum, eindDatum, aantalDoelgroepers, aantalBegeleiders, aantalKokers = \
-		form.kampNaam.data, form.startDatum.data, form.eindDatum.data, form.aantalDoelgroepers.data, form.aantalBegeleiders.data, form.aantalKokers.data
-		kamp = kampen(kampNaam=kampNaam, startDatum=startDatum, eindDatum=eindDatum, aantalDoelgroepers=aantalDoelgroepers, \
-			aantalBegeleiders=aantalBegeleiders, aantalKokers=aantalKokers)
+		kampNaam, startDatum, eindDatum, minDoelgroepers, maxDoelgroepers, aantalBegeleiders, aantalKokers = \
+		form.kampNaam.data, form.startDatum.data, form.eindDatum.data, form.minDoelgroepers.data, \
+		form.maxDoelgroepers.data, form.aantalBegeleiders.data, form.aantalKokers.data
+		kamp = kampen(kampNaam=kampNaam, startDatum=startDatum, eindDatum=eindDatum, minAantalDoelgroepers=minDoelgroepers,\
+		 maxAantalDoelgroepers=maxDoelgroepers, aantalBegeleiders=aantalBegeleiders, aantalKokers=aantalKokers)
 		db.session.add(kamp)
 		db.session.commit()
 		return render_template("kampindeling.html")
@@ -232,7 +236,7 @@ def lid_aanmaken():
 		form.voornaam.data, form.achternaam.data, form.geboortedatum.data, form.straatEnNummer.data, form.postcode.data, \
 		form.aantalKampen.data, form.hulpTikker.data, form.co.data, form.functie.data, form.dubbelZeilen.data
 		lid = leden(voornaam=voornaam,achternaam=achternaam,geboortedatum=geboortedatum,straatEnNummer=straatEnNummer,postcode=postcode,\
-			aantalKampen=aantalKampen,hulpTikker=hulpTikker,co=co,functie=functie,dubbelZeilen=dubbelZeilen,ingedeeldBij={})
+			aantalKampen=aantalKampen,hulpTikker=hulpTikker,co=co,functie=functie,dubbelZeilen=dubbelZeilen,ingedeeldBij={str(kamp.id):'beschikbaar' for kamp in kampen.query.all()})
 		db.session.add(lid)
 		db.session.commit()
 	return render_template("lid_aanmaken.html", form=form)
