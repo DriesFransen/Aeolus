@@ -1,13 +1,12 @@
 {% extends 'layout.html' %}
 
 {% block head %}
-{% set rollen = ['co', 'koker', 'zeiler', 'reserve'] %}
+{% set rollen = ['co', 'koker', 'zeiler', 'beschikbaar'] %}
 {% set coKleur = 'orange' %}
 {% set zeilerKleur = 'blue' %}
 {% set kokerKleur = 'green' %}
 
 <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-<link rel="stylesheet" href="/resources/demos/style.css">
 <style>
 
 	.sortable {
@@ -26,28 +25,36 @@
 		font-weight: normal;
 	}
 
+	h1 {
+		font-size: 30px;
+	}
+
+	div {
+		overflow: hidden;
+	}
+
 	.ui-tooltip {
 		font-size: 20px;
-    	white-space: pre-line;
+		white-space: pre-line;
 	}
 
 	.koker.co {
 		background: repeating-linear-gradient(
-		  30deg,
-		  {{ coKleur }},
-		  {{ coKleur }} 5px,
-		  {{ kokerKleur }} 5px,
-		  {{ kokerKleur }} 10px
+			30deg,
+			{{ coKleur }},
+			{{ coKleur }} 5px,
+			{{ kokerKleur }} 5px,
+			{{ kokerKleur }} 10px
 		);
 	}
 
 	.zeiler.co {
 		background: repeating-linear-gradient(
-		  30deg,
-		  {{ coKleur }},
-		  {{ coKleur }} 5px,
-		  {{ zeilerKleur }} 5px,
-		  {{ zeilerKleur }} 10px
+			30deg,
+			{{ coKleur }},
+			{{ coKleur }} 5px,
+			{{ zeilerKleur }} 5px,
+			{{ zeilerKleur }} 10px
 		);
 	}
 
@@ -59,41 +66,147 @@
 		background: {{ kokerKleur }};
 	}
 
+	.kokersNodig {
+		 display: inline;
+	}
+
+	.kokersIngedeeld {
+		 display: inline;
+	}
+
+	.zeilersNodig {
+		 display: inline;
+	}
+
+	.zeilersIngedeeld {
+		 display: inline;
+	}
+
+	.botenNodig {
+		 display: inline;
+	}
+
+	.plekkenOver {
+		 display: inline;
+	}
+
 </style>
 <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
 <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
 <script>
+function updateIngedeeld(item, from, idIngedeeld, idNodig, increment) {
+
+	if ($(item).hasClass('dubbelzeilen')) {
+		increment = 0;
+	}
+	$(idIngedeeld).text(parseInt($(idIngedeeld).text()) + increment);
+	var itemIdStr = $(item).attr("id").split('-')[0];
+	$('#' + itemIdStr + '-aantalKeerIngedeeld').text(parseInt($('#' + itemIdStr + '-aantalKeerIngedeeld').text()) + increment);
+	if (parseInt($('#' + itemIdStr + '-aantalKeerIngedeeld').text()) == 1) {
+		$('#' + itemIdStr + '-kampenMeervoudJaNee').text('');
+	} else {
+		// console.log('dit gaat helemaal fout ' + )
+		$('#' + itemIdStr + '-kampenMeervoudJaNee').text('en');
+	}
+	if (parseInt($('#' + itemIdStr + '-aantalKeerIngedeeld').text()) > parseInt($('#' + itemIdStr + '-aantalKampen').text())) {
+		$('.'+itemIdStr).css("borderColor", "red");
+		$('.'+itemIdStr).css("borderWidth", "10px");
+	} else {
+		$('.'+itemIdStr).css("borderColor", "");
+		$('.'+itemIdStr).css("borderWidth", "");
+	}
+	$('.' + itemIdStr).attr('title', $('#' + itemIdStr + '-tooltip').text())
+	if ($(idIngedeeld).text() == $(idNodig).text()) {
+		$(idIngedeeld).css("color", "green");
+		$(idIngedeeld).animate({fontSize: "+=10px"}, 50);
+		$(idIngedeeld).animate({fontSize: "-=10px"}, 300);
+	} else {
+		$(idIngedeeld).css("color", "black");
+	}
+}
+
 $( function() {
 	{% for kamp in kampen %}
 		{% for rol in ['koker', 'zeiler', 'co'] %}
 			$(".{{ rol }}-{{ kamp.id }}").sortable({ items: ".{{ rol }}", connectWith: ".sortable-{{ kamp.id }}", axis: "y", 
-				stop: function(e, ui) {ui.item.children.show() },
 				receive: function (event, ui) {
-				if (!$(ui.item).hasClass("{{ rol }}")) {
-					$(ui.sender).sortable("cancel");
-				} 
-			}});
+					var from = $(ui.sender).text().split(/\s+/)[0].toLowerCase();
+					if (!$(ui.item).hasClass("{{ rol }}")) {
+						$(ui.sender).sortable("cancel");
+						if ($.inArray(from, ['beschikbaar', 'reserve']) > -1) {
+							$('#plekkenOver-{{ kamp.id }}').text(parseInt($('#plekkenOver-{{ kamp.id }}').text()) + 1);
+							if ($(ui.item).hasClass('koker')) {
+								$(updateIngedeeld($(ui.item), from, "#kokersIngedeeld-{{ kamp.id }}", "#kokersNodig-{{ kamp.id }}", -1))
+							} else if ($(ui.item).hasClass('zeiler')) {
+								$(updateIngedeeld($(ui.item), from, "#zeilersIngedeeld-{{ kamp.id }}", "#zeilersNodig-{{ kamp.id }}", -1))
+							}
+						}
+						// for (var i=0; i<3; i++) {
+						// 	$("body").animate({backgroundColor: 'red'}, 100);
+						// 	$("body").animate({backgroundColor: 'white'}, 100);
+						// }
+						// $("body").animate({backgroundColor: '#FF9F3F'}, 100);
+					}
+					// if ($.inArray(from, ['beschikbaar', 'reserve']) > -1) {
+						$('#plekkenOver-{{ kamp.id }}').text(parseInt($('#plekkenOver-{{ kamp.id }}').text()) - 1);
+					// }
+					if($(ui.item).hasClass('koker')) {
+						$(updateIngedeeld($(ui.item), from, "#kokersIngedeeld-{{ kamp.id }}", "#kokersNodig-{{ kamp.id }}", 1))
+					} else if($(ui.item).hasClass('zeiler')) {
+						$(updateIngedeeld($(ui.item), from, "#zeilersIngedeeld-{{ kamp.id }}", "#zeilersNodig-{{ kamp.id }}", 1))
+					}
+				},
+				remove: function (event, ui) {
+					var from = $(this);
+					$('#plekkenOver-{{ kamp.id }}').text(parseInt($('#plekkenOver-{{ kamp.id }}').text()) + 1);
+					// if ($(this).hasClass('beschikbaar')) {
+					// 	$('#plekkenOver-{{ kamp.id }}').text(parseInt($('#plekkenOver-{{ kamp.id }}').text()) + 1);
+					// }
+					if($(ui.item).hasClass('koker')) {
+						$(updateIngedeeld($(ui.item), from, "#kokersIngedeeld-{{ kamp.id }}", "#kokersNodig-{{ kamp.id }}", -1))
+					} else if($(ui.item).hasClass('zeiler')) {
+						$(updateIngedeeld($(ui.item), from, "#zeilersIngedeeld-{{ kamp.id }}", "#zeilersNodig-{{ kamp.id }}", -1))
+					}
+				}
+			});
 			$(".{{ rol }}-{{ kamp.id }}").disableSelection();
 		{% endfor %}
+		$(".beschikbaar-{{ kamp.id }}").sortable({ items: ".deelnemer", connectWith: ".sortable-{{ kamp.id }}", axis: "y"});
+		$(".beschikbaar-{{ kamp.id }}").disableSelection();
 		$(".reserve-{{ kamp.id }}").sortable({ items: ".deelnemer", connectWith: ".sortable-{{ kamp.id }}", axis: "y"});
 		$(".reserve-{{ kamp.id }}").disableSelection();
 	{% endfor %}
-	$( document ).tooltip({ show: false, hide: false, position: { my: "left+15 center", at: "right center"} });
+	// $( document ).tooltip({ show: false, hide: false, position: { my: "left+15 center", at: "right center"} });
 });
+
+$.widget("ui.tooltip", $.ui.tooltip, {
+	options: {
+		content: function () {
+			return $(this).prop('title');
+		}
+	}
+});
+
+{% for lid in leden %}
+	$(function () {
+		$('.{{ lid.id }}').attr('title', $('#{{ lid.id }}-tooltip').text())
+		$(document).tooltip({ show: false, hide: false, position: { my: "left+15 center", at: "right center"} });
+	});
+{% endfor %}
 
 $(document).ready(function(){
 	$(".submitbutton").click(function() {
 		var id = $(this).attr('id').split('-')[1];
-		var role_list = ["co", "koker", "zeiler", "reserve"];
+		var role_list = ["co", "koker", "zeiler", "beschikbaar"];
 		var co_names = [];
 		var koker_names = [];	
 		var zeiler_names = [];	
-		var reserve_names = [];	
+		var beschikbaar_names = [];	
 		for (var i = 0; i < role_list.length; i++) {
 			$('#'+role_list[i]+'-'+id).children().each(function() {
 				user_id = $(this).attr('id');
 				if (user_id) {
-					eval(role_list[i]+"_names").push(user_id[0]);
+					eval(role_list[i]+"_names").push(user_id.split('-')[0]);
 				}
 			});
 		}
@@ -102,7 +215,7 @@ $(document).ready(function(){
 			contentType: "application/json;charset=utf-8",
 			url: "/kampindeling_submit",
 			traditional: "true",
-			data: JSON.stringify({'kamp_id': id, 'co':co_names, 'koker':koker_names, 'zeiler':zeiler_names, 'reserve':reserve_names,}),
+			data: JSON.stringify({'kamp_id': id, 'co':co_names, 'koker':koker_names, 'zeiler':zeiler_names, 'beschikbaar':beschikbaar_names,}),
 			dataType: "json"
 		});
 	});
@@ -116,29 +229,78 @@ Index
 	
 {% block body %}
 
+{% for lid in leden %}
+	{% set functieStr = lid.functie + ('co' if lid.co else '') %}
+	{% set aantalKeerIngedeeld = [] %}
+	{% for kampID in lid.ingedeeldBij %}
+		{% if lid.ingedeeldBij[kampID] in ['co', 'koker', 'zeiler'] %}
+			{% do aantalKeerIngedeeld.append(1) %}
+		{% endif %}
+	{% endfor %}
+	<div id="{{ lid.id }}-tooltip" class="leden-tooltip" style="display: none;">{{ lid.voornaam }} {{ lid.achternaam }}
+		{{ lid.telefoonnummer }}
+		{{ functieStr|capitalize }}{{ '\nDubbelzeilen' if lid.dubbelZeilen }}
+		Wil <div id="{{ lid.id }}-aantalKampen">{{ lid.aantalKampen }}</div> kamp{{ 'en' if lid.aantalKampen != 1 }} doen
+		Heeft {{ lid.kampenGedaan }} kamp{{ 'en' if lid.kampenGedaan != 1 }} gedaan
+		Is bij <div id="{{ lid.id }}-aantalKeerIngedeeld" style="display: inline;">{{ aantalKeerIngedeeld|length }}</div> kamp<div id="{{ lid.id }}-kampenMeervoudJaNee" style="display: inline;">{{ 'en' if aantalKeerIngedeeld|length != 1 }}</div> ingedeeld{{ '\n\"' + lid.opmerking + '\"' if lid.opmerking }}
+	</div>
+{% endfor %}
+
+
+<form method="POST">
 <table>
 {% for kamp in kampen %}
-	<th id="{{ kamp.id }}">
-	<form method="POST">
-		{{ kamp.kampNaam }}
-		{% for rol in ['co', 'koker', 'zeiler', 'reserve'] %}
-			<div id="{{ rol }}-{{ kamp.id }}" class="sortable sortable-{{ kamp.id }} {{ rol }}-{{ kamp.id }}"><h1>{{ rol|capitalize }}</h1>
+	<th id="{{ kamp.id }}" style="vertical-align: top; padding-right: 10px;">
+		{{ kamp.kampNaam }}<br>
+		<div style="font-size: 18px;">{{ kamp.startDatum.strftime('%d-%m-%Y') }} tot {{ kamp.eindDatum.strftime('%d-%m-%Y') }}</div>
+		{% set botenNodig = ([(kamp.maxAantalDoelgroepers + kamp.aantalBegeleiders + kamp.aantalKokers)/4, 3] | sort)[-1]|round(0, 'ceil')|int %}
+		{% set plekkenOver = [(botenNodig * 5) - (kamp.maxAantalDoelgroepers + kamp.aantalBegeleiders)] %}
+		{% set kokersIngedeeld = [] %}
+		{% set zeilersIngedeeld = [] %}
+
+		{% for lid in leden %}
+			{% if lid.ingedeeldBij[kamp.id|string] and lid.ingedeeldBij[kamp.id|string] not in ['reserve', 'beschikbaar'] %}
+				{% if plekkenOver.append(plekkenOver.pop() - 1) %}{% endif %}
+			{% endif %}
+			{% if lid.ingedeeldBij[kamp.id|string] == "koker" or (lid.ingedeeldBij[kamp.id|string] == "co" and lid.functie == "koker") %}
+				{% do kokersIngedeeld.append(1) %}
+			{% elif lid.ingedeeldBij[kamp.id|string] == "zeiler" or (lid.ingedeeldBij[kamp.id|string] == "co" and lid.functie == "zeiler") %}
+				{% if not lid.dubbelZeilen %}
+					{% do zeilersIngedeeld.append(1) %}
+				{% endif %}
+			{% endif %}
+		{% endfor %}
+		<div style="font-size: 15px;">
+			Boten nodig: <div id="botenNodig-{{ kamp.id }}" class="botenNodig">{{ botenNodig }}</div><br>
+			Plekken over: <div id="plekkenOver-{{ kamp.id }}" class="plekkenOver">{{ plekkenOver[0] }}</div><br>
+			Aantal Doelgroepers: 
+			{% if kamp.minAantalDoelgroepers == kamp.maxAantalDoelgroepers %}
+				{{ kamp.maxAantalDoelgroepers }}
+			{% else %}
+				{{ kamp.minAantalDoelgroepers }} - {{ kamp.maxAantalDoelgroepers }}
+			{% endif %} <br>
+			Aantal Begeleiders: {{ kamp.aantalBegeleiders }} <br>
+			Kokers nodig: <div id="kokersNodig-{{ kamp.id }}" class="kokersNodig">{{ kamp.aantalKokers }}</div>.
+			Ingedeeld: <div id="kokersIngedeeld-{{ kamp.id }}" class="kokersIngedeeld" {% if kamp.aantalKokers == kokersIngedeeld|length %}style="color: green;"{% endif %}>{{ kokersIngedeeld|length }}</div> <br>
+			Zeilers nodig: <div id="zeilersNodig-{{ kamp.id }}" class="zeilersNodig">{{ botenNodig }}</div>.
+			Ingedeeld: <div id="zeilersIngedeeld-{{ kamp.id }}" class="zeilersIngedeeld" {% if botenNodig == zeilersIngedeeld|length %}style="color: green;"{% endif %}>{{ zeilersIngedeeld|length }}</div>
+		</div>
+		{% for rol in ['co', 'koker', 'zeiler', 'beschikbaar', 'reserve'] %}
+			<div id="{{ rol }}-{{ kamp.id }}" class="sortable sortable-{{ kamp.id }} {{ rol }}-{{ kamp.id }} {{ rol }}container"><h1>{{ rol|capitalize }}</h1>
 				{% for lid in leden %}
 					{% if lid.ingedeeldBij[kamp.id|string] == rol %}
-						{% set functieStr = lid.functie + ('co' if lid.co else '') %}
-						{% set classStr = lid.functie + (' co' if lid.co else '')  %}
-						<div id="{{ lid.id }}-{{ kamp.id }}" class="deelnemer {{ classStr }}" title="{{ lid.voornaam }} {{ lid.achternaam }}
-							{{ functieStr|capitalize }}
-							{{ lid.aantalKampen }} kampen
-							{{ 'Dubbelzeilen' if lid.dubbelZeilen else '' }}">
-							{{ lid.voornaam }}
+						{% set classStr = lid.functie + (' co' if lid.co else '') + (' dubbelzeilen' if lid.dubbelZeilen else '')  %}
+						<div id="{{ lid.id }}-{{ kamp.id }}" class="deelnemer {{ classStr }} {{ lid.id }}" title="">
+							<div style="width: 75%; white-space: nowrap; float: left;">{{ lid.voornaam }}</div>
+							<div style="float: right;">{% if lid.dubbelZeilen %}++{% elif not lid.kampenGedaan %}+{% endif %}</div>
 						</div>
 					{% endif %}
 				{% endfor %}
 			</div>
 		{% endfor %}
-		<button href="#" class="submitbutton" id="submitbutton-{{ kamp.id }}">klik</button>
+		<button href="#" class="submitbutton" id="submitbutton-{{ kamp.id }}">Opslaan</button>
 	</th>
 {% endfor %}
 </table>
+</form>
 {% endblock %}
