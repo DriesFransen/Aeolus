@@ -18,6 +18,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from copy import deepcopy
 import datetime as dt
 import json
+import phonenumbers
 
 app = Flask(__name__)
 os.environ["DATABASE_URL"] = "postgres://yeunqgptxihplv:81c3415035b203f5ad010f95ae8120557827\
@@ -96,11 +97,13 @@ class LidAanmaakForm(FlaskForm):
 	geboortedatum = DateField("Geboortedatum",default=dt.date.today, format='%d-%m-%Y')
 	straatEnNummer = StringField("Straat + huisnummer", validators=[InputRequired()])
 	postcode = StringField("Postcode", validators=[InputRequired()])
+	telefoonnummer = StringField("Telefoonnummer")
 	aantalKampen = IntegerField("Aantal kampen", validators=[InputRequired()])
 	hulpTikker = BooleanField("Hulptikker")
 	co = BooleanField("Co")
 	functie = RadioField(choices=[('koker', 'koker'), ('zeiler', 'zeiler')], validators=[InputRequired()])
 	dubbelZeilen = BooleanField("Dubbelzeilen")
+	opmerking = StringField("Opmerking")
 
 
 
@@ -118,6 +121,8 @@ class leden(db.Model):
 	dubbelZeilen = db.Column(db.Boolean)
 	ingedeeldBij = db.Column(db.JSON)
 	kampenGedaan = db.Column(db.Integer, default=0)
+	telefoonnummer = db.Column(db.String, default="0612264974")
+	opmerking = db.Column(db.String)
 
 class ledenbeschikbaarheid(db.Model):
 	datum = db.Column(db.Date, primary_key=True)
@@ -232,11 +237,15 @@ def kamp_toevoegen():
 def lid_aanmaken():
 	form = LidAanmaakForm()
 	if form.validate_on_submit():
-		voornaam, achternaam, geboortedatum, straatEnNummer, postcode, aantalKampen, hulpTikker, co, functie, dubbelZeilen =\
-		form.voornaam.data, form.achternaam.data, form.geboortedatum.data, form.straatEnNummer.data, form.postcode.data, \
-		form.aantalKampen.data, form.hulpTikker.data, form.co.data, form.functie.data, form.dubbelZeilen.data
+		voornaam, achternaam, geboortedatum, straatEnNummer, postcode, aantalKampen, \
+		hulpTikker, co, functie, dubbelZeilen, telefoonnummer, opmerking = \
+		form.voornaam.data, form.achternaam.data, form.geboortedatum.data, \
+		form.straatEnNummer.data, form.postcode.data, form.aantalKampen.data, \
+		form.hulpTikker.data, form.co.data, form.functie.data, form.dubbelZeilen.data, \
+		form.telefoonnummer.data, form.opmerking.data
 		lid = leden(voornaam=voornaam,achternaam=achternaam,geboortedatum=geboortedatum,straatEnNummer=straatEnNummer,postcode=postcode,\
-			aantalKampen=aantalKampen,hulpTikker=hulpTikker,co=co,functie=functie,dubbelZeilen=dubbelZeilen,ingedeeldBij={str(kamp.id):'beschikbaar' for kamp in kampen.query.all()})
+			aantalKampen=aantalKampen,hulpTikker=hulpTikker,co=co,functie=functie,dubbelZeilen=dubbelZeilen,\
+			ingedeeldBij={str(kamp.id):'beschikbaar' for kamp in kampen.query.all()}, telefoonnummer=telefoonnummer, opmerking=opmerking)
 		db.session.add(lid)
 		db.session.commit()
 	return render_template("lid_aanmaken.html", form=form)

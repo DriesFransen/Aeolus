@@ -40,21 +40,21 @@
 
 	.koker.co {
 		background: repeating-linear-gradient(
-		  30deg,
-		  {{ coKleur }},
-		  {{ coKleur }} 5px,
-		  {{ kokerKleur }} 5px,
-		  {{ kokerKleur }} 10px
+			30deg,
+			{{ coKleur }},
+			{{ coKleur }} 5px,
+			{{ kokerKleur }} 5px,
+			{{ kokerKleur }} 10px
 		);
 	}
 
 	.zeiler.co {
 		background: repeating-linear-gradient(
-		  30deg,
-		  {{ coKleur }},
-		  {{ coKleur }} 5px,
-		  {{ zeilerKleur }} 5px,
-		  {{ zeilerKleur }} 10px
+			30deg,
+			{{ coKleur }},
+			{{ coKleur }} 5px,
+			{{ zeilerKleur }} 5px,
+			{{ zeilerKleur }} 10px
 		);
 	}
 
@@ -98,9 +98,24 @@ function updateIngedeeld(item, from, idIngedeeld, idNodig, increment) {
 
 	if ($(item).hasClass('dubbelzeilen')) {
 		increment = 0;
-		console.log($(item));
 	}
 	$(idIngedeeld).text(parseInt($(idIngedeeld).text()) + increment);
+	var itemIdStr = $(item).attr("id").split('-')[0];
+	$('#' + itemIdStr + '-aantalKeerIngedeeld').text(parseInt($('#' + itemIdStr + '-aantalKeerIngedeeld').text()) + increment);
+	if (parseInt($('#' + itemIdStr + '-aantalKeerIngedeeld').text()) == 1) {
+		$('#' + itemIdStr + '-kampenMeervoudJaNee').text('');
+	} else {
+		// console.log('dit gaat helemaal fout ' + )
+		$('#' + itemIdStr + '-kampenMeervoudJaNee').text('en');
+	}
+	if (parseInt($('#' + itemIdStr + '-aantalKeerIngedeeld').text()) > parseInt($('#' + itemIdStr + '-aantalKampen').text())) {
+		$('.'+itemIdStr).css("borderColor", "red");
+		$('.'+itemIdStr).css("borderWidth", "10px");
+	} else {
+		$('.'+itemIdStr).css("borderColor", "");
+		$('.'+itemIdStr).css("borderWidth", "");
+	}
+	$('.' + itemIdStr).attr('title', $('#' + itemIdStr + '-tooltip').text())
 	if ($(idIngedeeld).text() == $(idNodig).text()) {
 		$(idIngedeeld).css("color", "green");
 		$(idIngedeeld).animate({fontSize: "+=10px"}, 50);
@@ -161,8 +176,23 @@ $( function() {
 		$(".reserve-{{ kamp.id }}").sortable({ items: ".deelnemer", connectWith: ".sortable-{{ kamp.id }}", axis: "y"});
 		$(".reserve-{{ kamp.id }}").disableSelection();
 	{% endfor %}
-	$( document ).tooltip({ show: false, hide: false, position: { my: "left+15 center", at: "right center"} });
+	// $( document ).tooltip({ show: false, hide: false, position: { my: "left+15 center", at: "right center"} });
 });
+
+$.widget("ui.tooltip", $.ui.tooltip, {
+	options: {
+		content: function () {
+			return $(this).prop('title');
+		}
+	}
+});
+
+{% for lid in leden %}
+	$(function () {
+		$('.{{ lid.id }}').attr('title', $('#{{ lid.id }}-tooltip').text())
+		$(document).tooltip({ show: false, hide: false, position: { my: "left+15 center", at: "right center"} });
+	});
+{% endfor %}
 
 $(document).ready(function(){
 	$(".submitbutton").click(function() {
@@ -199,10 +229,28 @@ Index
 	
 {% block body %}
 
+{% for lid in leden %}
+	{% set functieStr = lid.functie + ('co' if lid.co else '') %}
+	{% set aantalKeerIngedeeld = [] %}
+	{% for kampID in lid.ingedeeldBij %}
+		{% if lid.ingedeeldBij[kampID] in ['co', 'koker', 'zeiler'] %}
+			{% do aantalKeerIngedeeld.append(1) %}
+		{% endif %}
+	{% endfor %}
+	<div id="{{ lid.id }}-tooltip" class="leden-tooltip" style="display: none;">{{ lid.voornaam }} {{ lid.achternaam }}
+		{{ lid.telefoonnummer }}
+		{{ functieStr|capitalize }}{{ '\nDubbelzeilen' if lid.dubbelZeilen }}
+		Wil <div id="{{ lid.id }}-aantalKampen">{{ lid.aantalKampen }}</div> kamp{{ 'en' if lid.aantalKampen != 1 }} doen
+		Heeft {{ lid.kampenGedaan }} kamp{{ 'en' if lid.kampenGedaan != 1 }} gedaan
+		Is bij <div id="{{ lid.id }}-aantalKeerIngedeeld" style="display: inline;">{{ aantalKeerIngedeeld|length }}</div> kamp<div id="{{ lid.id }}-kampenMeervoudJaNee" style="display: inline;">{{ 'en' if aantalKeerIngedeeld|length != 1 }}</div> ingedeeld{{ '\n\"' + lid.opmerking + '\"' if lid.opmerking }}
+	</div>
+{% endfor %}
+
+
+<form method="POST">
 <table>
 {% for kamp in kampen %}
 	<th id="{{ kamp.id }}" style="vertical-align: top; padding-right: 10px;">
-	<form method="POST">
 		{{ kamp.kampNaam }}<br>
 		<div style="font-size: 18px;">{{ kamp.startDatum.strftime('%d-%m-%Y') }} tot {{ kamp.eindDatum.strftime('%d-%m-%Y') }}</div>
 		{% set botenNodig = ([(kamp.maxAantalDoelgroepers + kamp.aantalBegeleiders + kamp.aantalKokers)/4, 3] | sort)[-1]|round(0, 'ceil')|int %}
@@ -224,7 +272,7 @@ Index
 		{% endfor %}
 		<div style="font-size: 15px;">
 			Boten nodig: <div id="botenNodig-{{ kamp.id }}" class="botenNodig">{{ botenNodig }}</div><br>
-		 	Plekken over: <div id="plekkenOver-{{ kamp.id }}" class="plekkenOver">{{ plekkenOver[0] }}</div><br>
+			Plekken over: <div id="plekkenOver-{{ kamp.id }}" class="plekkenOver">{{ plekkenOver[0] }}</div><br>
 			Aantal Doelgroepers: 
 			{% if kamp.minAantalDoelgroepers == kamp.maxAantalDoelgroepers %}
 				{{ kamp.maxAantalDoelgroepers }}
@@ -241,19 +289,8 @@ Index
 			<div id="{{ rol }}-{{ kamp.id }}" class="sortable sortable-{{ kamp.id }} {{ rol }}-{{ kamp.id }} {{ rol }}container"><h1>{{ rol|capitalize }}</h1>
 				{% for lid in leden %}
 					{% if lid.ingedeeldBij[kamp.id|string] == rol %}
-						{% set aantalKeerIngedeeld = [] %}
-						{% for kampID in lid.ingedeeldBij %}
-							{% if lid.ingedeeldBij[kampID] in ['co', 'koker', 'zeiler'] %}
-								{% do aantalKeerIngedeeld.append(1) %}
-							{% endif %}
-						{% endfor %}
-						{% set functieStr = lid.functie + ('co' if lid.co else '') %}
 						{% set classStr = lid.functie + (' co' if lid.co else '') + (' dubbelzeilen' if lid.dubbelZeilen else '')  %}
-						<div id="{{ lid.id }}-{{ kamp.id }}" class="deelnemer {{ classStr }}" title="{{ lid.voornaam }} {{ lid.achternaam }}
-							{{ functieStr|capitalize }}{{ '\nDubbelzeilen' if lid.dubbelZeilen }}
-							Wil {{ lid.aantalKampen }} kamp{{ 'en' if lid.aantalKampen != 1 }} doen
-							Heeft {{ lid.kampenGedaan }} kamp{{ 'en' if lid.kampenGedaan != 1 }} gedaan
-							Is bij N kampen ingedeeld">
+						<div id="{{ lid.id }}-{{ kamp.id }}" class="deelnemer {{ classStr }} {{ lid.id }}" title="">
 							<div style="width: 75%; white-space: nowrap; float: left;">{{ lid.voornaam }}</div>
 							<div style="float: right;">{% if lid.dubbelZeilen %}++{% elif not lid.kampenGedaan %}+{% endif %}</div>
 						</div>
@@ -265,4 +302,5 @@ Index
 	</th>
 {% endfor %}
 </table>
+</form>
 {% endblock %}
